@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sebastians Tic-Tac-Toe Paradies</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+            background-image: url("snowy_village.jpg");
+            overflow: hidden;
+            color: #fff;
+        }
+        header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px 20px;
+            position: absolute;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+        }
+        header img {
+            height: 50px;
+        }
+        #main {
+            text-align: center;
+            margin-top: 80px;
+            animation: fadeIn 2s ease-in-out;
+            position: relative;
+            z-index: 2;
+        }
+        #title {
+            font-size: 56px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        button {
+            background-color: #C2C2C2;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 20px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+            transition: transform 0.2s, background-color 0.3s;
+        }
+        .restart-game-button {
+            background-color: #ff4500;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 20px;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+            transition: transform 0.2s, background-color 0.3s;
+        }
+        /*button:hover {
+            transform: scale(1.1);
+            background-color: #ff4500;
+        }*/
+        .mode-active {
+            background-color: #32CD32;
+        }
+        #game-controls {
+            margin-bottom: 20px;
+        }
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            gap: 10px;
+            justify-content: center;
+            margin: 20px auto;
+            animation: slideIn 1s ease-out;
+            z-index: 2;
+        }
+        @keyframes slideIn {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        .cell {
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 36px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+            color: black;
+        }
+        .cell:hover {
+            transform: scale(1.1);
+        }
+        #winner-banner {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 24px;
+            color: white;
+            z-index: 2000;
+        }
+        .snow {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        footer {
+            margin: 245px 0 0 0;
+            background: linear-gradient(180deg, rgba(255,255,255,0.8) 0%, rgba(237,237,237,0.8) 35%, rgba(218,215,215,0.8) 100%);
+            width: 100%;
+            padding: 10px 0;
+            position: fixed;
+            bottom: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="main">
+        <div id="title">Sebastians Tic-Tac-Toe Paradies</div>
+        <div id="game-controls">
+            <button id="two-player-mode">2 Spieler Modus</button>
+            <button id="cpu-mode">Gegen CPU spielen</button>
+        </div>
+        <div id="game-board"></div>
+        <button class="restart-game-button" id="restart-game">Neustart</button>
+        <div id="winner-banner"></div>
+    </div>
+
+    <canvas class="snow"></canvas>
+    
+    <footer>
+        <center>
+            <img src="https://www.wff-it.de/assets/wff/images/layout/WFF_IT_Logo_offen.svg" width="140" alt="Logo">
+        </center>
+    </footer>
+
+    <script>
+        const gameBoard = document.getElementById('game-board');
+        const winnerBanner = document.getElementById('winner-banner');
+        const restartButton = document.getElementById('restart-game');
+        const twoPlayerModeBtn = document.getElementById('two-player-mode');
+        const cpuModeBtn = document.getElementById('cpu-mode');
+
+        let board = ['', '', '', '', '', '', '', '', ''];
+        let currentPlayer = 'X';
+        let gameActive = true;
+        let isCPUMode = false;
+        const playerColors = { X: '#ff4500', O: '#4169e1' };
+
+        // Schneeeffekt-Setup
+        const snowCanvas = document.querySelector('.snow');
+        const ctx = snowCanvas.getContext('2d');
+
+        function resizeCanvas() {
+            snowCanvas.width = window.innerWidth;
+            snowCanvas.height = window.innerHeight;
+        }
+
+        resizeCanvas();
+
+        const snowflakes = [];
+
+        function createSnowflake() {
+            return {
+                x: Math.random() * snowCanvas.width,
+                y: -20,
+                opacity: Math.random(),
+                speed: Math.random() * 3 + 1,
+                radius: Math.random() * 4 + 1
+            };
+        }
+
+        function updateSnowflakes() {
+            snowflakes.forEach((flake, i) => {
+                flake.y += flake.speed;
+                if (flake.y > snowCanvas.height) {
+                    snowflakes[i] = createSnowflake();
+                }
+            });
+        }
+
+        function drawSnowflakes() {
+            ctx.clearRect(0, 0, snowCanvas.width, snowCanvas.height);
+            snowflakes.forEach(flake => {
+                ctx.beginPath();
+                ctx.arc(flake.x, flake.y, flake.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${flake.opacity})`;
+                ctx.fill();
+            });
+        }
+
+        function loop() {
+            updateSnowflakes();
+            drawSnowflakes();
+            requestAnimationFrame(loop);
+        }
+
+        for (let i = 0; i < 200; i++) {
+            const flake = createSnowflake();
+            flake.y = Math.random() * snowCanvas.height;
+            snowflakes.push(flake);
+        }
+
+        loop();
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // CPU Logik
+        function findBestMove() {
+            const makesMistake = Math.random() < 0.3;
+
+            if (makesMistake) {
+                const availableMoves = board.reduce((moves, cell, index) => {
+                    if (cell === '') moves.push(index);
+                    return moves;
+                }, []);
+
+                if (availableMoves.length > 0) {
+                    return availableMoves[Math.floor(Math.random() * availableMoves.length)];
+                }
+            }
+
+            // Prüfe zuerst, ob wir gewinnen können
+            for (let i = 0; i < 9; i++) {
+                if (board[i] === '') {
+                    board[i] = 'O';
+                    if (checkWinner() === 'O') {
+                        board[i] = '';
+                        return i;
+                    }
+                    board[i] = '';
+                }
+            }
+
+            // Prüfe, ob wir einen gegnerischen Gewinnzug blockieren müssen
+            for (let i = 0; i < 9; i++) {
+                if (board[i] === '') {
+                    board[i] = 'X';
+                    if (checkWinner() === 'X') {
+                        board[i] = '';
+                        return i;
+                    }
+                    board[i] = '';
+                }
+            }
+
+            // Bevorzuge das Zentrum
+            if (board[4] === '') return 4;
+
+            // Bevorzuge die Ecken
+            const corners = [0, 2, 6, 8];
+            const availableCorners = corners.filter(i => board[i] === '');
+            if (availableCorners.length > 0) {
+                return availableCorners[Math.floor(Math.random() * availableCorners.length)];
+            }
+
+            // Nimm einen beliebigen freien Platz
+            const availableMoves = board.reduce((moves, cell, index) => {
+                if (cell === '') moves.push(index);
+                return moves;
+            }, []);
+
+            return availableMoves[Math.floor(Math.random() * availableMoves.length)];
+        }
+
+        function makeCPUMove() {
+            if (!gameActive || currentPlayer === 'X') return;
+            
+            setTimeout(() => {
+                const moveIndex = findBestMove();
+                const cell = gameBoard.children[moveIndex];
+                
+                board[moveIndex] = 'O';
+                cell.textContent = 'O';
+                cell.style.color = playerColors['O'];
+
+                const winner = checkWinner();
+                if (winner) {
+                    displayWinner(winner);
+                } else {
+                    currentPlayer = 'X';
+                }
+            }, 500);
+        }
+
+        function checkWinner() {
+            const winningCombinations = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8],
+                [0, 3, 6], [1, 4, 7], [2, 5, 8],
+                [0, 4, 8], [2, 4, 6]
+            ];
+
+            for (const combination of winningCombinations) {
+                const [a, b, c] = combination;
+                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                    return board[a];
+                }
+            }
+
+            return board.includes('') ? null : 'draw';
+        }
+
+        function displayWinner(winner) {
+            winnerBanner.style.display = 'block';
+            winnerBanner.textContent = winner === 'draw' ? 'Unentschieden!' : 
+                                     `${winner === 'X' ? 'Spieler' : 'CPU'} hat gewonnen!`;
+            gameActive = false;
+        }
+
+        function resetGame() {
+            board = ['', '', '', '', '', '', '', '', ''];
+            currentPlayer = 'X';
+            gameActive = true;
+            Array.from(gameBoard.children).forEach(cell => {
+                cell.textContent = '';
+                cell.style.color = '';
+            });
+            winnerBanner.style.display = 'none';
+        }
+
+        function setGameMode(mode) {
+            isCPUMode = mode === 'cpu';
+            twoPlayerModeBtn.classList.toggle('mode-active', !isCPUMode);
+            cpuModeBtn.classList.toggle('mode-active', isCPUMode);
+            resetGame();
+        }
+
+        restartButton.addEventListener('click', resetGame);
+        twoPlayerModeBtn.addEventListener('click', () => setGameMode('two-player'));
+        cpuModeBtn.addEventListener('click', () => setGameMode('cpu'));
+
+        for (let i = 0; i < 9; i++) {
+            const cell = document.createElement('div');
+            cell.classList.add('cell');
+            cell.addEventListener('click', () => {
+                if (cell.textContent || !gameActive || (isCPUMode && currentPlayer === 'O')) return;
+
+                board[i] = currentPlayer;
+                cell.textContent = currentPlayer;
+                cell.style.color = playerColors[currentPlayer];
+
+                const winner = checkWinner();
+                if (winner) {
+                    displayWinner(winner);
+                } else {
+                    currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+                    if (isCPUMode && currentPlayer === 'O') {
+                        makeCPUMove();
+                    }
+                }
+            });
+            gameBoard.appendChild(cell);
+        }
+
+        setGameMode('two-player');
+    </script>
+</body>
+</html>
